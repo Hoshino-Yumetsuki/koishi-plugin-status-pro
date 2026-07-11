@@ -1,29 +1,36 @@
-/*
- * @Author: Kabuda-czh
- * @Date: 2023-02-16 09:35:30
- * @LastEditors: Kabuda-czh
- * @LastEditTime: 2023-02-16 18:28:27
- * @FilePath: \koishi-plugin-status-pro\src\neko\utils\index.ts
- * @Description:
- *
- * Copyright (c) 2023 by Kabuda-czh, All Rights Reserved.
- */
-import os from "os";
-import * as si from "systeminformation";
+import os from 'node:os';
+import * as si from 'systeminformation';
 
-const ErrorInfo = "N / A";
+const ErrorInfo = 'N / A';
+
+export interface DashboardItem {
+  progress: number;
+  title: string;
+}
+
+export interface InformationItem {
+  key: string;
+  value: string;
+}
+
+export interface SystemInfo {
+  name: string;
+  dashboard: DashboardItem[];
+  information: InformationItem[];
+  footer: string;
+}
 
 export async function getSystemInfo(
   name: string,
   koishiVersion: string,
   pluginSize: number
-) {
+): Promise<SystemInfo> {
   const promisList = await Promise.all([
     getCPUUsage(),
     si.osInfo(),
     si.cpuCurrentSpeed(),
     si.mem(),
-    getDiskUsage(),
+    getDiskUsage()
   ]);
 
   const { uptime } = si.time();
@@ -33,19 +40,19 @@ export async function getSystemInfo(
     { distro },
     { avg },
     { total, used, swaptotal, swapused },
-    { disksize, diskused },
+    { disksize, diskused }
   ] = promisList;
 
   // memory
-  const memoryTotal = (total / 1024 / 1024 / 1024).toFixed(2) + " GB";
+  const memoryTotal = (total / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   const memoryUsed = (used / 1024 / 1024 / 1024).toFixed(2);
   const memoryUsage = (used / total).toFixed(2);
   // swap
-  const swapTotal = (swaptotal / 1024 / 1024 / 1024).toFixed(2) + " GB";
+  const swapTotal = (swaptotal / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   const swapUsed = (swapused / 1024 / 1024 / 1024).toFixed(2);
   const swapUsage = (swapused / swaptotal).toFixed(2);
   // disk
-  const diskTotal = (disksize / 1024 / 1024 / 1024).toFixed(2) + " GB";
+  const diskTotal = (disksize / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   const diskUsed = (diskused / 1024 / 1024 / 1024).toFixed(2);
   const diskUsage = (diskused / disksize).toFixed(2);
 
@@ -54,40 +61,40 @@ export async function getSystemInfo(
     dashboard: [
       {
         progress: +cpuUsage,
-        title: `${(+cpuUsage * 100).toFixed(0)}% - ${avg}Ghz`,
+        title: `${(+cpuUsage * 100).toFixed(0)}% - ${avg}Ghz`
       },
       {
         progress: +memoryUsage || 0,
-        title: isNaN(+memoryUsed) ? ErrorInfo : `${memoryUsed} / ${memoryTotal}`,
+        title: isNaN(+memoryUsed) ? ErrorInfo : `${memoryUsed} / ${memoryTotal}`
       },
       {
         progress: +swapUsage || 0,
-        title: isNaN(+swapUsed) ? ErrorInfo : `${swapUsed} / ${swapTotal}`,
+        title: isNaN(+swapUsed) ? ErrorInfo : `${swapUsed} / ${swapTotal}`
       },
       {
         progress: +diskUsage || 0,
-        title: isNaN(+diskUsed) ? ErrorInfo : `${diskUsed} / ${diskTotal}`,
-      },
+        title: isNaN(+diskUsed) ? ErrorInfo : `${diskUsed} / ${diskTotal}`
+      }
     ],
     information: [
       {
-        key: "CPU",
-        value: cpuInfo,
+        key: 'CPU',
+        value: cpuInfo
       },
       {
-        key: "System",
-        value: distro,
+        key: 'System',
+        value: distro
       },
       {
-        key: "Version",
-        value: koishiVersion,
+        key: 'Version',
+        value: koishiVersion
       },
       {
-        key: "Plugins",
-        value: `${pluginSize} loaded`,
-      },
+        key: 'Plugins',
+        value: `${pluginSize} loaded`
+      }
     ],
-    footer: durationTime(uptime),
+    footer: durationTime(uptime)
   };
 
   return systemInfo;
@@ -104,7 +111,7 @@ async function getDiskUsage() {
 
   return {
     disksize,
-    diskused,
+    diskused
   };
 }
 
@@ -123,7 +130,7 @@ async function getCPUUsage() {
 
   return {
     cpuUsage,
-    cpuInfo,
+    cpuInfo
   };
 }
 
@@ -132,16 +139,14 @@ function getCPUInfo() {
   let idle = 0;
 
   const total = cpus.reduce((acc, cpu) => {
-    for (const type in cpu.times) {
-      acc += cpu.times[type];
-    }
+    acc += Object.values(cpu.times).reduce((sum, value) => sum + value, 0);
     idle += cpu.times.idle;
     return acc;
   }, 0);
 
   return {
     idle,
-    total,
+    total
   };
 }
 
