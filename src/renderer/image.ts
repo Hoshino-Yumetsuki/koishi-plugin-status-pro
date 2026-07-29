@@ -10,7 +10,11 @@ import type { SystemInfo } from '../neko/utils';
 const CANVAS_W = 963;
 const CANVAS_H = 1872;
 const CONTENT_X = 64;
+const CONTENT_RIGHT = CANVAS_W - 64;
 const TITLE_Y = 636;
+const DASHBOARD_TEXT_X = CONTENT_X + 132;
+const INFO_VALUE_X = CONTENT_X + 215;
+const INFO_ROW_HEIGHT = 72;
 const MAIN_COLOR = '#54adff';
 const INFO_COLOR = '#b7a89e';
 const DASHBOARD_COLORS = [MAIN_COLOR, '#ffb3cc', '#fcaa93', '#b7a89e'] as const;
@@ -40,9 +44,20 @@ export async function renderStatusImage(systemInfo: SystemInfo): Promise<Buffer>
 
   children.push(
     container({
-      style: { position: 'absolute', left: CONTENT_X, top: TITLE_Y },
+      style: {
+        position: 'absolute',
+        left: CONTENT_X,
+        top: TITLE_Y,
+        width: CONTENT_RIGHT - CONTENT_X - 90,
+        height: 62,
+        overflow: 'hidden'
+      },
       children: [
-        textNode(systemInfo.name, { fontSize: 50, color: MAIN_COLOR, fontFamily: 'HachiMaruPop' })
+        textNode(ellipsize(systemInfo.name, CONTENT_RIGHT - CONTENT_X - 90, 50), {
+          fontSize: 50,
+          color: MAIN_COLOR,
+          fontFamily: 'HachiMaruPop'
+        })
       ]
     })
   );
@@ -52,7 +67,10 @@ export async function renderStatusImage(systemInfo: SystemInfo): Promise<Buffer>
       src: 'marker',
       style: {
         position: 'absolute',
-        left: CONTENT_X + estimateTextW(systemInfo.name, 50) + 20,
+        left: Math.min(
+          CONTENT_X + estimateTextW(systemInfo.name, 50) + 20,
+          CONTENT_RIGHT - 58
+        ),
         top: TITLE_Y,
         height: 58
       }
@@ -97,8 +115,21 @@ export async function renderStatusImage(systemInfo: SystemInfo): Promise<Buffer>
 
     children.push(
       container({
-        style: { position: 'absolute', left: CONTENT_X + 132, top: y + 42 },
-        children: [textNode(item.title, { fontSize: 45, color, fontFamily: 'Gugi' })]
+        style: {
+          position: 'absolute',
+          left: DASHBOARD_TEXT_X,
+          top: y + 30,
+          width: CONTENT_RIGHT - DASHBOARD_TEXT_X,
+          height: 72,
+          overflow: 'hidden'
+        },
+        children: [
+          textNode(wrapText(item.title, CONTENT_RIGHT - DASHBOARD_TEXT_X, 45, 2), {
+            fontSize: 45,
+            color,
+            fontFamily: 'Gugi'
+          })
+        ]
       })
     );
   }
@@ -106,7 +137,8 @@ export async function renderStatusImage(systemInfo: SystemInfo): Promise<Buffer>
   const informationY = dashboardY + systemInfo.dashboard.length * 152 + 75;
   for (let index = 0; index < systemInfo.information.length; index++) {
     const item = systemInfo.information[index];
-    const y = informationY + index * 56;
+    const y = informationY + index * INFO_ROW_HEIGHT;
+    const valueWidth = CONTENT_RIGHT - INFO_VALUE_X;
 
     children.push(
       container({
@@ -117,15 +149,32 @@ export async function renderStatusImage(systemInfo: SystemInfo): Promise<Buffer>
 
     children.push(
       container({
-        style: { position: 'absolute', left: CONTENT_X + 215, top: y },
-        children: [textNode(item.value, { fontSize: 28, color: INFO_COLOR, fontFamily: 'Gugi' })]
+        style: {
+          position: 'absolute',
+          left: INFO_VALUE_X,
+          top: y,
+          width: valueWidth,
+          height: INFO_ROW_HEIGHT,
+          overflow: 'hidden'
+        },
+        children: [
+          textNode(wrapText(item.value, valueWidth, 28, 2), {
+            fontSize: 28,
+            color: INFO_COLOR,
+            fontFamily: 'Gugi'
+          })
+        ]
       })
     );
   }
 
   children.push(
     container({
-      style: { position: 'absolute', left: CONTENT_X + 360, top: informationY + 315 },
+      style: {
+        position: 'absolute',
+        left: CONTENT_X + 360,
+        top: informationY + systemInfo.information.length * INFO_ROW_HEIGHT + 24
+      },
       children: [
         textNode(systemInfo.footer, { fontSize: 22, color: INFO_COLOR, fontFamily: 'HachiMaruPop' })
       ]
@@ -169,6 +218,45 @@ async function readAsset(...paths: string[]): Promise<Uint8Array> {
 
 function assetRoot(): string {
   return join(dirname(fileURLToPath(import.meta.url)), 'assets');
+}
+
+function wrapText(str: string, maxWidth: number, fontSize: number, maxLines: number): string {
+  const lines: string[] = [];
+  let line = '';
+
+  for (const word of str.split(/(\s+)/)) {
+    if (estimateTextW(line + word, fontSize) <= maxWidth) {
+      line += word;
+      continue;
+    }
+
+    if (line) lines.push(line.trimEnd());
+    line = '';
+    for (const ch of word) {
+      if (estimateTextW(line + ch, fontSize) > maxWidth && line) {
+        lines.push(line);
+        line = '';
+      }
+      line += ch;
+    }
+  }
+  if (line) lines.push(line.trimEnd());
+
+  if (lines.length <= maxLines) return lines.join('\n');
+  const kept = lines.slice(0, maxLines);
+  kept[maxLines - 1] = ellipsize(kept[maxLines - 1], maxWidth, fontSize);
+  return kept.join('\n');
+}
+
+function ellipsize(str: string, maxWidth: number, fontSize: number): string {
+  if (estimateTextW(str, fontSize) <= maxWidth) return str;
+
+  let result = '';
+  for (const ch of str) {
+    if (estimateTextW(result + ch + '…', fontSize) > maxWidth) break;
+    result += ch;
+  }
+  return result + '…';
 }
 
 function estimateTextW(str: string, fontSize: number): number {

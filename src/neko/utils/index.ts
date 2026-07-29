@@ -39,18 +39,19 @@ export async function getSystemInfo(
     { cpuUsage, cpuInfo },
     { distro },
     { avg },
-    { total, used, swaptotal, swapused },
+    { total, available, swaptotal, swapused },
     { disksize, diskused }
   ] = promisList;
 
   // memory
+  const memoryUsedBytes = Math.max(0, total - available);
   const memoryTotal = (total / 1024 / 1024 / 1024).toFixed(2) + ' GB';
-  const memoryUsed = (used / 1024 / 1024 / 1024).toFixed(2);
-  const memoryUsage = (used / total).toFixed(2);
+  const memoryUsed = (memoryUsedBytes / 1024 / 1024 / 1024).toFixed(2);
+  const memoryUsage = total > 0 ? (memoryUsedBytes / total).toFixed(2) : '0';
   // swap
   const swapTotal = (swaptotal / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   const swapUsed = (swapused / 1024 / 1024 / 1024).toFixed(2);
-  const swapUsage = (swapused / swaptotal).toFixed(2);
+  const swapUsage = swaptotal > 0 ? (swapused / swaptotal).toFixed(2) : '0';
   // disk
   const diskTotal = (disksize / 1024 / 1024 / 1024).toFixed(2) + ' GB';
   const diskUsed = (diskused / 1024 / 1024 / 1024).toFixed(2);
@@ -102,16 +103,11 @@ export async function getSystemInfo(
 
 async function getDiskUsage() {
   const disks = await si.fsSize();
-  let disksize = 0,
-    diskused = 0;
-  disks.forEach((disk) => {
-    disksize += disk.size;
-    diskused += disk.used;
-  });
+  const rootDisk = disks.find((disk) => disk.mount === '/');
 
   return {
-    disksize,
-    diskused
+    disksize: rootDisk?.size ?? 0,
+    diskused: rootDisk?.used ?? 0
   };
 }
 

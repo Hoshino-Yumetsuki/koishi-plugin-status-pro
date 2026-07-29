@@ -3,3 +3,7 @@ lib
 tsconfig.tsbuildinfo
 LICENSE
 .omo
+.omc
+.claude
+*.lock
+.yarn
